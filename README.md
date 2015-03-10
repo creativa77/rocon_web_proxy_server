@@ -28,7 +28,8 @@ Pre-requisites:
 
  - Sign-up or log-in to [Heroku.com](https://id.heroku.com/login)
  - Install the [Heroku toolbelt](https://toolbelt.heroku.com/)
- - Get the code and deploy to Heroku:
+
+#### Deploy to Heroku:
 
     git clone git@github.com:creativa77/rocon_web_proxy_server.git
     cd rocon_web_proxy_server
