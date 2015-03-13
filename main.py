@@ -69,10 +69,10 @@ class RosbridgeProxyHandler(WebSocketHandler):
             if self == proxy:
                 for client in clients:
                     if client != proxy:
-                        client.send_message(message)
+                        client.write_message(message)
             else:
                 if proxy is not None:
-                    proxy.send_message(message)
+                    proxy.write_message(message)
         except:
             print "Unexpected error:", sys.exc_info()[0]
             traceback.print_exc()
@@ -83,9 +83,6 @@ class RosbridgeProxyHandler(WebSocketHandler):
         print "Client disconnected. %d clients total." % clients_connected
         if self == proxy:
             proxy = None
-
-    def send_message(self, message):
-        tornado.ioloop.IOLoop.instance().add_callback(partial(self.write_message, message))
 
     def check_origin(self, origin):
         return True
@@ -98,6 +95,8 @@ def main():
     http_server = tornado.httpserver.HTTPServer(application)
     port = int(os.environ.get("PORT", 9090))
     http_server.listen(port)
+
+    print "ROCON Web Proxy Server started on port %d" % port
 
     tornado.ioloop.IOLoop.instance().start()
 
