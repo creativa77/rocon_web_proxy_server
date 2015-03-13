@@ -1,21 +1,40 @@
 import os
 import sys
 import traceback
+import base64
 import tornado.httpserver
 import tornado.ioloop
 import tornado.web
 from tornado.websocket import WebSocketHandler
 from functools import partial
+from tornado.web import asynchronous
 import json
 
 # Global ID seed for clients
 clients_connected = 0
 proxy = None
 clients = []
+connToClient = None
 
 class HttpHandler(tornado.web.RequestHandler):
+    @asynchronous
     def get(self):
-        self.write("Hello world")
+        global proxy, connToClient
+
+        print "Got get"
+        #TODO SET HEADER
+        
+        self.clear()
+        self.set_status(200)
+        self.set_header('server','example')
+        self.set_header('connection','close')
+        self.set_header('pragma','no-cache')
+        self.set_header('cache-control','no-cache, no-store, must-revalidate, pre-check=0, post-check=0, max-age=0')
+        self.set_header('access-control-allow-origin','*')
+        self.set_header('content-type','multipart/x-mixed-replace;boundary=--boundarydonotcross')
+        if proxy != None:
+            connToClient = self
+            proxy.send_message('{"op":"video"}')
 
 class RosbridgeProxyHandler(WebSocketHandler):
     def open(self):
@@ -25,13 +44,27 @@ class RosbridgeProxyHandler(WebSocketHandler):
         clients.append(self)
 
     def on_message(self, message):
-        global proxy, clients
+        global proxy, clients, connToClient
         try:
-            print "Got message: [%s]" % str(message)
+            #print "Got message: [%s]" % str(message)
             msg = json.loads(message)
             if msg['op'] == 'proxy':
                 proxy = self
                 print "It's a proxy!"
+            elif msg['op'] == 'video':
+                print "Got Video Chunk"
+                if connToClient != None:
+                    if not connToClient.request.connection.stream.closed():
+                        decoded = base64.b64decode(msg['data'])
+                        connToClient.write(decoded)
+                        connToClient.flush()
+                    else:
+                        self.send_message('{"op":"endVideo"}')
+            elif msg['op'] == 'endVideo':
+                if connToClient != None:
+                    connToClient.finish()
+                    print "Connection Finished"
+                
 
             if self == proxy:
                 for client in clients:
