@@ -8,11 +8,29 @@ var ros = new ROSLIB.Ros();
 var gListRoles = [];
 var gListInteractions = [];
 var gFinalUrl;
+var gFinalHash;
 
 var gUrl;
 var gCookieCount;
 
 var defaultUrl;
+
+
+//Remocon profile
+var gPublishers = {}
+var gRunningInteractions = [];
+var gRoconVersion = 'acdc'; //todo make rocon/version.js fot obtaining
+var gRemoconUUID = uuid().replace(/-/g,'');
+var gRemoconName = 'web_remocon_' + gRemoconUUID;
+var gRemoconRoconURI = 'rocon:/*/' + gRemoconName + '/*/' + getBrowser();
+var gRemoconPlatformInfo = {
+    'uri' : gRemoconRoconURI,
+    'version' : gRoconVersion,
+    'icon': {'resource_name': '',
+              'format': '',
+              'data': []
+             }
+};
 
 // Starts here
 $(document).ready(function () {
@@ -30,6 +48,47 @@ $(document).ready(function () {
     ros.connect(defaultUrl);
   }
 });
+
+
+/**
+  * Initialize ros publishers for sending data
+  *
+  * @function initPublisher
+*/
+
+function initPublisher(){
+  gPublishers['remocon_status'] = new ROSLIB.Topic({
+        ros : ros,
+        name : "remocons/" + gRemoconName,
+        messageType : 'rocon_interaction_msgs/RemoconStatus',
+        latch :true
+    });
+}
+
+/**
+  * Publish remocon status
+  *
+  * @function publishRemoconStatus
+*/
+
+function publishRemoconStatus(){
+    //todo 
+    //getting running interactions how to get interaction info?
+    var runningInteractionHashs = [];
+    for (i = 0 ; i < gRunningInteractions.length ; i ++){
+      var hash = gRunningInteractions[i]['interaction_hash'];
+      runningInteractionHashs.push(hash)
+    }
+    console.log('runningInteractionHashs: ', runningInteractionHashs);
+    
+    var remocon_status = {
+      'platform_info' : gRemoconPlatformInfo,
+      'uuid' : gRemoconUUID,
+      'running_interactions' : runningInteractionHashs,
+      'version' : gRoconVersion
+    }
+    gPublishers['remocon_status'].publish(remocon_status)
+}
 
 
 /**
@@ -65,11 +124,12 @@ function setROSCallbacks() {
 
     $("#connectBtn").hide();
     $("#disconnectBtn").show();
-        
+    initPublisher();
     initList();
     displayMasterInfo();
     getRoles();
     masterInfoMode();
+    publishRemoconStatus();
   });
 
   ros.on('close', function() {
@@ -218,13 +278,18 @@ function deleteUrl() {
 function displayMasterInfo() {
   $("#selecturl").hide();
   $("#masterinfo").show();
-
-  subscribeTopic(ros, "/concert/info", "rocon_std_msgs/MasterInfo", function(message) {
-    $("#masterinfopanel").append('<p style="float: left"><img src="data:' + message["icon"]["resource_name"] + ';base64,' + message["icon"]["data"] + '" alt="Red dot" style="height:75px; width:75px;"></p>');
-    $("#masterinfopanel").append('<p><strong>&nbsp;&nbsp;&nbsp;name</strong> : ' + message["name"] +'</p>');
-    $("#masterinfopanel").append('<p><strong>&nbsp;&nbsp;&nbsp;master_url</strong> : ' + gUrl +'</p>');
-    $("#masterinfopanel").append('<p><strong>&nbsp;&nbsp;&nbsp;description</strong> : ' + message["description"] +'</p>');
+  ros.getTopicsForType("rocon_std_msgs/MasterInfo", function(topic_name){
+    console.log(topic_name);
+    if(topic_name !== undefined || topic_name.length > 0){
+        subscribeTopic(ros, topic_name[0], "rocon_std_msgs/MasterInfo", function(message) {
+        $("#masterinfopanel").append('<p style="float: left"><img src="data:' + message["icon"]["resource_name"] + ';base64,' + message["icon"]["data"] + '" alt="Red dot" style="height:75px; width:75px;"></p>');
+        $("#masterinfopanel").append('<p><strong>&nbsp;&nbsp;&nbsp;name</strong> : ' + message["name"] +'</p>');
+        $("#masterinfopanel").append('<p><strong>&nbsp;&nbsp;&nbsp;master_url</strong> : ' + gUrl +'</p>');
+        $("#masterinfopanel").append('<p><strong>&nbsp;&nbsp;&nbsp;description</strong> : ' + message["description"] +'</p>');
+      });  
+    }
   });
+  
 }
 
 /**
@@ -237,14 +302,16 @@ function getRoles() {
   var request = new ROSLIB.ServiceRequest({
     uri : 'rocon:/*/*/*/' + browser
   });
-
-  callService(ros, '/concert/interactions/get_roles', 'rocon_interaction_msgs/GetRoles', request, function(result) {
-    for (var i = 0; i < result.roles.length; i++) {
-      gListRoles.push(result.roles[i]);
+  ros.getServicesForType('rocon_interaction_msgs/GetRoles', function(service_name){
+    if (service_name !== undefined || service_name.length > 0){
+      callService(ros, service_name[0], 'rocon_interaction_msgs/GetRoles', request, function(result) {
+        for (var i = 0; i < result.roles.length; i++) {
+          gListRoles.push(result.roles[i]);
+        }
+        displayRoles();
+      });
     }
-        
-    displayRoles();
-  });
+  }); 
 }
 
 /**
@@ -271,14 +338,17 @@ function getInteractions(selectedRole) {
     roles : [selectedRole],
     uri : 'rocon:/*/*/*/' + browser
   });
-
-  callService(ros, '/concert/interactions/get_interactions', 'rocon_interaction_msgs/GetInteractions', request, function(result) {
-    for (var i = 0; i < result.interactions.length; i++) {
-      gListInteractions.push(result.interactions[i]);
+  ros.getServicesForType('rocon_interaction_msgs/GetInteractions', function(service_name){
+    if (service_name !== undefined || service_name.length > 0){
+      callService(ros, service_name[0], 'rocon_interaction_msgs/GetInteractions', request, function(result) {
+        for (var i = 0; i < result.interactions.length; i++) {
+          gListInteractions.push(result.interactions[i]);
+        }
+        displayInteractions();
+      });
     }
-        
-    displayInteractions();
   });
+  
 }
 
 /**
@@ -357,7 +427,6 @@ function prepareWebappUrl(interaction, baseUrl) {
 */
 function displayDescription(interaction) {
   $("#startappBtn").show();
-    
   $("#descriptionpanel").append('<p><strong>name</strong> : ' + interaction["name"] + '</p><hr>');
     
   $("#descriptionpanel").append('<p><strong>display_name</strong> : ' + interaction["display_name"] + '</p>');
@@ -413,8 +482,28 @@ function listItemSelect() {
 
     var index = $(this).attr('id').charAt($(this).attr('id').length - 1);
     gFinalUrl = classifyInteraction(gListInteractions[index]);
+    gFinalHash = gListInteractions[index].hash;
     displayDescription(gListInteractions[index]);
   });
+}
+
+/**
+  * Check whether a new window is closed or not every time.
+  * If it is closed, the check function is also stopped.
+  *
+  * @function checkRunningInteraction
+*/
+function checkRunningInteraction (window_handler, window_key){
+  if (window_handler.closed === true){
+    for (i = 0 ; i < gRunningInteractions.length ; i ++){
+      if (gRunningInteractions[i].hasOwnProperty(window_key) === true){
+        clearInterval(gRunningInteractions[i][window_key]);
+        gRunningInteractions.splice(i, 1);
+        publishRemoconStatus();
+
+      }
+    }
+  }
 }
 
 /**
@@ -425,11 +514,22 @@ function listItemSelect() {
 function startApp() {
   $("#startappBtn").hide();
   $("#startappBtn").click(function () {
-    if (gFinalUrl == null) {
+    var finalUrl = gFinalUrl;
+    var finalHash = gFinalHash;
+    var runningInteraction = {}
+    var id = uuid();
+
+    if (finalUrl == null) {
       alert("not available on this platform");
       return;
     }
-    window.open(gFinalUrl);
+    var new_window = window.open(finalUrl);
+    runningInteraction['interaction_hash'] = finalHash;
+    runningInteraction[id] = setInterval(function(){
+          checkRunningInteraction(new_window, id);
+      }, 1000);
+    gRunningInteractions.push(runningInteraction);
+    publishRemoconStatus();
   });
 }
 
