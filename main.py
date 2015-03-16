@@ -92,10 +92,9 @@ class RosbridgeProxyHandler(WebSocketHandler):
 
 def main():
     application = tornado.web.Application([
-        (r"/rocon_web_remocon/(.*)",tornado.web.StaticFileHandler,{"path":"./www/rocon_web_remocon", "default_filename":"index.html"}),
-        (r"/rocon_web_common/(.*)",tornado.web.StaticFileHandler,{"path":"./www/rocon_web_common", "default_filename":"index.html"}),
+        (r"/(.*)",tornado.web.StaticFileHandler,{"path":"./www"}),
         (r"/video", HttpHandler),
-        (r"/", RosbridgeProxyHandler),
+        (r"/ws", RosbridgeProxyHandler),
     ])
     http_server = tornado.httpserver.HTTPServer(application)
     port = int(os.environ.get("PORT", 9090))
