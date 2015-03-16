@@ -23,7 +23,7 @@ class HttpHandler(tornado.web.RequestHandler):
 
         print "Got get"
         #TODO SET HEADER
-        
+
         self.clear()
         self.set_status(200)
         self.set_header('server','example')
@@ -34,7 +34,7 @@ class HttpHandler(tornado.web.RequestHandler):
         self.set_header('content-type','multipart/x-mixed-replace;boundary=--boundarydonotcross')
         if proxy != None:
             connToClient = self
-            proxy.send_message('{"op":"video"}')
+            proxy.write_message('{"op":"video"}')
 
 class RosbridgeProxyHandler(WebSocketHandler):
     def open(self):
@@ -59,20 +59,19 @@ class RosbridgeProxyHandler(WebSocketHandler):
                         connToClient.write(decoded)
                         connToClient.flush()
                     else:
-                        self.send_message('{"op":"endVideo"}')
+                        self.write_message('{"op":"endVideo"}')
             elif msg['op'] == 'endVideo':
                 if connToClient != None:
                     connToClient.finish()
                     print "Connection Finished"
-                
 
             if self == proxy:
                 for client in clients:
                     if client != proxy:
-                        client.send_message(message)
+                        client.write_message(message)
             else:
                 if proxy is not None:
-                    proxy.send_message(message)
+                    proxy.write_message(message)
         except:
             print "Unexpected error:", sys.exc_info()[0]
             traceback.print_exc()
@@ -84,21 +83,20 @@ class RosbridgeProxyHandler(WebSocketHandler):
         if self == proxy:
             proxy = None
 
-    def send_message(self, message):
-        tornado.ioloop.IOLoop.instance().add_callback(partial(self.write_message, message))
-
     def check_origin(self, origin):
         return True
 
 def main():
     application = tornado.web.Application([
-        (r"/(.*)",tornado.web.StaticFileHandler,{"path":"./www"}),
         (r"/video", HttpHandler),
         (r"/ws", RosbridgeProxyHandler),
+        (r"/(.*)",tornado.web.StaticFileHandler,{"path":"./www"}),
     ])
     http_server = tornado.httpserver.HTTPServer(application)
     port = int(os.environ.get("PORT", 9090))
     http_server.listen(port)
+
+    print "ROCON Web Proxy Server started on port %d" % port
 
     tornado.ioloop.IOLoop.instance().start()
 
