@@ -23,7 +23,7 @@ class HttpHandler(tornado.web.RequestHandler):
 
         print "Got get"
         #TODO SET HEADER
-        
+
         self.clear()
         self.set_status(200)
         self.set_header('server','example')
@@ -34,7 +34,7 @@ class HttpHandler(tornado.web.RequestHandler):
         self.set_header('content-type','multipart/x-mixed-replace;boundary=--boundarydonotcross')
         if proxy != None:
             connToClient = self
-            proxy.send_message('{"op":"video"}')
+            proxy.write_message('{"op":"video"}')
 
 class RosbridgeProxyHandler(WebSocketHandler):
     def open(self):
@@ -59,12 +59,11 @@ class RosbridgeProxyHandler(WebSocketHandler):
                         connToClient.write(decoded)
                         connToClient.flush()
                     else:
-                        self.send_message('{"op":"endVideo"}')
+                        self.write_message('{"op":"endVideo"}')
             elif msg['op'] == 'endVideo':
                 if connToClient != None:
                     connToClient.finish()
                     print "Connection Finished"
-                
 
             if self == proxy:
                 for client in clients:
