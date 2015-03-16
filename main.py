@@ -88,9 +88,9 @@ class RosbridgeProxyHandler(WebSocketHandler):
 
 def main():
     application = tornado.web.Application([
-        (r"/(.*)",tornado.web.StaticFileHandler,{"path":"./www"}),
         (r"/video", HttpHandler),
         (r"/ws", RosbridgeProxyHandler),
+        (r"/(.*)",tornado.web.StaticFileHandler,{"path":"./www"}),
     ])
     http_server = tornado.httpserver.HTTPServer(application)
     port = int(os.environ.get("PORT", 9090))
