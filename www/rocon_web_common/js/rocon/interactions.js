@@ -39,4 +39,5 @@ var rocon_interactions = new function() {
     else{
         console.log('no interactions data');
     }
+    this.rosbridge_uri += '/ws'
 }
