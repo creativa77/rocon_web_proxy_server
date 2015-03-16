@@ -46,7 +46,7 @@ class RosbridgeProxyHandler(WebSocketHandler):
     def on_message(self, message):
         global proxy, clients, connToClient
         try:
-            #print "Got message: [%s]" % str(message)
+            print "Got message: [%s]" % str(message)
             msg = json.loads(message)
             if msg['op'] == 'proxy':
                 proxy = self
@@ -92,6 +92,8 @@ class RosbridgeProxyHandler(WebSocketHandler):
 
 def main():
     application = tornado.web.Application([
+        (r"/rocon_web_remocon/(.*)",tornado.web.StaticFileHandler,{"path":"./www/rocon_web_remocon", "default_filename":"index.html"}),
+        (r"/rocon_web_common/(.*)",tornado.web.StaticFileHandler,{"path":"./www/rocon_web_common", "default_filename":"index.html"}),
         (r"/video", HttpHandler),
         (r"/", RosbridgeProxyHandler),
     ])
