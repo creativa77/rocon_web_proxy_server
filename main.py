@@ -6,7 +6,6 @@ import tornado.httpserver
 import tornado.ioloop
 import tornado.web
 from tornado.websocket import WebSocketHandler
-from functools import partial
 from tornado.web import asynchronous
 import json
 
@@ -15,6 +14,7 @@ clients_connected = 0
 proxy = None
 clients = []
 connToClient = None
+
 
 class HttpHandler(tornado.web.RequestHandler):
     @asynchronous
@@ -26,15 +26,18 @@ class HttpHandler(tornado.web.RequestHandler):
 
         self.clear()
         self.set_status(200)
-        self.set_header('server','example')
-        self.set_header('connection','close')
-        self.set_header('pragma','no-cache')
-        self.set_header('cache-control','no-cache, no-store, must-revalidate, pre-check=0, post-check=0, max-age=0')
-        self.set_header('access-control-allow-origin','*')
-        self.set_header('content-type','multipart/x-mixed-replace;boundary=--boundarydonotcross')
-        if proxy != None:
+        self.set_header('server', 'example')
+        self.set_header('connection', 'close')
+        self.set_header('pragma', 'no-cache')
+        self.set_header('cache-control', 'no-cache, no-store, must-revalidate,'
+                        'pre-check=0, post-check=0, max-age=0')
+        self.set_header('access-control-allow-origin', '*')
+        self.set_header('content-type', 'multipart/x-mixed-replace;boundary='
+                        '--boundarydonotcross')
+        if proxy is not None:
             connToClient = self
             proxy.write_message('{"op":"video"}')
+
 
 class RosbridgeProxyHandler(WebSocketHandler):
     def open(self):
@@ -53,7 +56,7 @@ class RosbridgeProxyHandler(WebSocketHandler):
                 print "It's a proxy!"
             elif msg['op'] == 'video':
                 print "Got Video Chunk"
-                if connToClient != None:
+                if connToClient is not None:
                     if not connToClient.request.connection.stream.closed():
                         decoded = base64.b64decode(msg['data'])
                         connToClient.write(decoded)
@@ -61,7 +64,7 @@ class RosbridgeProxyHandler(WebSocketHandler):
                     else:
                         self.write_message('{"op":"endVideo"}')
             elif msg['op'] == 'endVideo':
-                if connToClient != None:
+                if connToClient is not None:
                     connToClient.finish()
                     print "Connection Finished"
 
@@ -86,11 +89,12 @@ class RosbridgeProxyHandler(WebSocketHandler):
     def check_origin(self, origin):
         return True
 
+
 def main():
     application = tornado.web.Application([
-        (r"/video", HttpHandler),
+        (r"/stream", HttpHandler),
         (r"/ws", RosbridgeProxyHandler),
-        (r"/(.*)",tornado.web.StaticFileHandler,{"path":"./www"}),
+        (r"/(.*)", tornado.web.StaticFileHandler, {"path": "./www"}),
     ])
     http_server = tornado.httpserver.HTTPServer(application)
     port = int(os.environ.get("PORT", 9090))
