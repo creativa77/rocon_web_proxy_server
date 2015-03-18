@@ -49,13 +49,12 @@ class RosbridgeProxyHandler(WebSocketHandler):
     def on_message(self, message):
         global proxy, clients, connToClient
         try:
-            print "Got message: [%s]" % str(message)
+            #print "Got message: [%s]" % str(message)
             msg = json.loads(message)
             if msg['op'] == 'proxy':
                 proxy = self
                 print "It's a proxy!"
             elif msg['op'] == 'video':
-                print "Got Video Chunk"
                 if connToClient is not None:
                     if not connToClient.request.connection.stream.closed():
                         decoded = base64.b64decode(msg['data'])
