@@ -407,7 +407,19 @@ function prepareWebappUrl(interaction, baseUrl) {
   $.each(interaction.remappings, function(key, value) {
     interactionData['remappings'][value.remap_from] = value.remap_to;
   });
-    
+
+  // JAC: TODO: Make this conditional to when we can be sure the client
+  // actually wants to access the proxy from outside
+
+  // Parse Web Remocon URL page URL
+  var parser = document.createElement("a");
+  parser.href = ros.socket.url;
+  // Override parameters to point to the same server
+  interactionData['parameters'].rosbridge_address = parser.hostname;
+  interactionData['parameters'].rosbridge_port = parser.port;
+  interactionData['parameters'].video_steamer_host = parser.hostname;
+  interactionData['parameters'].video_steamer_port = parser.port;
+
   // Package all the data in json format and dump it to one query string variable
   queryStringMappings = {};
   queryStringMappings['interaction_data'] = JSON.stringify(interactionData);
