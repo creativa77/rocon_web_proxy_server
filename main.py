@@ -82,6 +82,7 @@ class RosbridgeProxyHandler(WebSocketHandler):
         global clients_connected, proxy
         clients_connected = clients_connected - 1
         print "Client disconnected. %d clients total." % clients_connected
+        clients.remove(self)
         if self == proxy:
             proxy = None
 
