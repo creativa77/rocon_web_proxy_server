@@ -24,8 +24,11 @@ class HttpHandler(tornado.web.RequestHandler):
     def get(self):
         global proxy, connToClient
 
-        print "Got get"
-        #TODO SET HEADER
+        print "got get"
+        args = {}
+        args['topic'] = self.get_argument('topic')
+        args['height'] = self.get_argument('height','480')
+        args['width'] = self.get_argument('width','640')
 
         self.clear()
         self.set_status(200)
@@ -39,7 +42,8 @@ class HttpHandler(tornado.web.RequestHandler):
                         '--boundarydonotcross')
         if proxy is not None:
             connToClient = self
-            proxy.write_message('{"op":"video"}')
+            message = json.dumps({"op":"video", "args" : args})
+            proxy.write_message(message)
 
 
 class RosbridgeProxyHandler(WebSocketHandler):
@@ -62,7 +66,6 @@ class RosbridgeProxyHandler(WebSocketHandler):
             print "-- Failed to send ping! %s" % ex
 
     def on_pong(self, data):
-        print "Recived pong %s" % data
         self.io_loop.add_timeout(datetime.timedelta(seconds=self.ping_interval), self.send_ping)
 
 
