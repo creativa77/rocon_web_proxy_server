@@ -46,13 +46,14 @@ class RosbridgeProxyHandler(WebSocketHandler):
     def __init__(self, application, request, **kwargs):
         tornado.websocket.WebSocketHandler.__init__(self, application, request, **kwargs)
         self.io_loop = tornado.ioloop.IOLoop.instance()
+        self.ping_interval = int(os.environ.get("PING_INTERVAL", 5))
 
     def open(self):
         global clients_connected, authenticate, proxy, clients
         clients_connected += 1
         print "Client connected.  %d clients total." % clients_connected
         clients.append(self)
-        self.io_loop.add_timeout(datetime.timedelta(seconds=random.randint(5,30)), self.send_ping)
+        self.io_loop.add_timeout(datetime.timedelta(seconds=self.ping_interval), self.send_ping)
 
     def send_ping(self):
         try:
@@ -62,7 +63,7 @@ class RosbridgeProxyHandler(WebSocketHandler):
 
     def on_pong(self, data):
         print "Recived pong %s" % data
-        self.io_loop.add_timeout(datetime.timedelta(seconds=5), self.send_ping)
+        self.io_loop.add_timeout(datetime.timedelta(seconds=self.ping_interval), self.send_ping)
 
 
     def on_message(self, message):
