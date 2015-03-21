@@ -1,6 +1,8 @@
 import os
 import sys
 import traceback
+import time
+import datetime
 import base64
 import tornado.httpserver
 import tornado.ioloop
@@ -8,6 +10,7 @@ import tornado.web
 from tornado.websocket import WebSocketHandler
 from tornado.web import asynchronous
 import json
+import random
 
 # Global ID seed for clients
 clients_connected = 0
@@ -21,8 +24,11 @@ class HttpHandler(tornado.web.RequestHandler):
     def get(self):
         global proxy, connToClient
 
-        print "Got get"
-        #TODO SET HEADER
+        print "got get"
+        args = {}
+        args['topic'] = self.get_argument('topic')
+        args['height'] = self.get_argument('height','480')
+        args['width'] = self.get_argument('width','640')
 
         self.clear()
         self.set_status(200)
@@ -36,15 +42,32 @@ class HttpHandler(tornado.web.RequestHandler):
                         '--boundarydonotcross')
         if proxy is not None:
             connToClient = self
-            proxy.write_message('{"op":"video"}')
+            message = json.dumps({"op":"video", "args" : args})
+            proxy.write_message(message)
 
 
 class RosbridgeProxyHandler(WebSocketHandler):
+    def __init__(self, application, request, **kwargs):
+        tornado.websocket.WebSocketHandler.__init__(self, application, request, **kwargs)
+        self.io_loop = tornado.ioloop.IOLoop.instance()
+        self.ping_interval = int(os.environ.get("PING_INTERVAL", 5))
+
     def open(self):
         global clients_connected, authenticate, proxy, clients
         clients_connected += 1
         print "Client connected.  %d clients total." % clients_connected
         clients.append(self)
+        self.io_loop.add_timeout(datetime.timedelta(seconds=self.ping_interval), self.send_ping)
+
+    def send_ping(self):
+        try:
+            self.ping("a")
+        except Exception as ex:
+            print "-- Failed to send ping! %s" % ex
+
+    def on_pong(self, data):
+        self.io_loop.add_timeout(datetime.timedelta(seconds=self.ping_interval), self.send_ping)
+
 
     def on_message(self, message):
         global proxy, clients, connToClient
