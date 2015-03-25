@@ -19,19 +19,19 @@ clients = []
 
 
 class HttpHandler(tornado.web.RequestHandler):
-    def __init__(self,proxy,videoClients):
-        super(HttpHandler, self).__init__()
-        self.proxy = proxy
-        self.videoClients = videoClients
-
     @asynchronous
     def get(self):
-        global proxy, connToClient
+        global proxies
 
         args = {}
         args['topic'] = self.get_argument('topic')
         args['height'] = self.get_argument('height','480')
         args['width'] = self.get_argument('width','640')
+        
+        #TODO Get proxy_id
+        #proxy_id = self.get_argument('proxy')
+        ip = self.request.remote_ip
+        proxy_id = 3
 
         self.clear()
         self.set_status(200)
@@ -43,9 +43,11 @@ class HttpHandler(tornado.web.RequestHandler):
         self.set_header('access-control-allow-origin', '*')
         self.set_header('content-type', 'multipart/x-mixed-replace;boundary='
                         '--boundarydonotcross')
-        if proxy is not None:
-            message = json.dumps({"op":"videoStart", "url_params" : args})
-            proxy.write_message(message)
+        for proxy in proxies:
+            if proxy.name == int(proxy_id):
+                message = json.dumps({"op":"videoStart", "url_params" : args})
+                clients.append(Client(proxy,self,True))
+                proxy.conn.write_message(message)
 
 
 class RosbridgeProxyHandler(WebSocketHandler):
@@ -57,8 +59,7 @@ class RosbridgeProxyHandler(WebSocketHandler):
     def open(self):
         global clients_connected, authenticate, clients
         clients_connected += 1
-        print repr(self)
-        print dir(self)
+        print self.request.remote_ip
         print "Client connected.  %d clients total." % clients_connected
         self.io_loop.add_timeout(datetime.timedelta(seconds=self.ping_interval), self.send_ping)
 
@@ -80,24 +81,30 @@ class RosbridgeProxyHandler(WebSocketHandler):
                 proxy = Proxy(self)
                 proxies.append(proxy)
                 print "It's a proxy!"
-                print "Proxy ID = ", proxy.id
+                print "Proxy ID = ", proxy.name
             #TODO beware when auth is included.
             elif msg['op'] == 'auth': #In the authorization is included the proxy id
                 for proxy in proxies:
-                    if msg['proxy_id'] == proxy.id: # if the proxy_id is found, the Client is created and binded to a proxy
+                    if msg['proxy_id'] == proxy.name: # if the proxy_id is found, the Client is created and binded to a proxy
                         client = Client(proxy,self)
                         clients.append(client)
                         proxy.clients.append(client)
-                        print "Client binded to proxy = ", proxy.id
+                        print "Client binded to proxy = ", proxy.name
                         break
             elif msg['op'] == 'videoData':
-                if connToClient is not None:
-                    if not connToClient.request.connection.stream.closed():
-                        decoded = base64.b64decode(msg['data'])
-                        connToClient.write(decoded)
-                        connToClient.flush()
-                    else:
-                        self.write_message('{"op":"endVideo"}')
+                try:
+                    for client in clients:
+                        if client.video == True:
+                            if not client.conn.request.connection.stream.closed():
+                                decoded = base64.b64decode(msg['data'])
+                                client.conn.write(decoded)
+                                client.conn.flush()
+                            else:
+                                print "Navigator closed"
+                                self.write_message('{"op":"endVideo"}')
+                                clients.remove(client)
+                except Exception as e:
+                    print e
             elif msg['op'] == 'endVideo':
                 if connToClient is not None:
                     connToClient.finish()
@@ -141,20 +148,21 @@ class RosbridgeProxyHandler(WebSocketHandler):
         return True
 
 class Proxy():
-    id = 1
+    name = 1
     clients = []
     def __init__(self,proxyConn):
         self.conn = proxyConn
-        self.id = Proxy.id
-        Proxy.id += 1
+        self.name = Proxy.name
+        Proxy.name += 1
 
 class Client():
-    id = 1
-    def __init__(self,proxy,conn):
+    name = 1
+    def __init__(self,proxy,conn,video=False):
         self.proxy = proxy
         self.conn = conn
-        self.id = Client.id
-        Client.id += 1
+        self.name = Client.name
+        self.video = video
+        Client.name += 1
 
 
 def main():
