@@ -14,17 +14,20 @@ import random
 
 # Global ID seed for clients
 clients_connected = 0
-proxy = None
+proxies = []
 clients = []
-connToClient = None
 
 
 class HttpHandler(tornado.web.RequestHandler):
+    def __init__(self,proxy,videoClients):
+        super(HttpHandler, self).__init__()
+        self.proxy = proxy
+        self.videoClients = videoClients
+
     @asynchronous
     def get(self):
         global proxy, connToClient
 
-        print "got get"
         args = {}
         args['topic'] = self.get_argument('topic')
         args['height'] = self.get_argument('height','480')
@@ -41,8 +44,7 @@ class HttpHandler(tornado.web.RequestHandler):
         self.set_header('content-type', 'multipart/x-mixed-replace;boundary='
                         '--boundarydonotcross')
         if proxy is not None:
-            connToClient = self
-            message = json.dumps({"op":"video", "args" : args})
+            message = json.dumps({"op":"videoStart", "url_params" : args})
             proxy.write_message(message)
 
 
@@ -53,10 +55,11 @@ class RosbridgeProxyHandler(WebSocketHandler):
         self.ping_interval = int(os.environ.get("PING_INTERVAL", 5))
 
     def open(self):
-        global clients_connected, authenticate, proxy, clients
+        global clients_connected, authenticate, clients
         clients_connected += 1
+        print repr(self)
+        print dir(self)
         print "Client connected.  %d clients total." % clients_connected
-        clients.append(self)
         self.io_loop.add_timeout(datetime.timedelta(seconds=self.ping_interval), self.send_ping)
 
     def send_ping(self):
@@ -70,14 +73,24 @@ class RosbridgeProxyHandler(WebSocketHandler):
 
 
     def on_message(self, message):
-        global proxy, clients, connToClient
+        global proxies, clients
         try:
-            #print "Got message: [%s]" % str(message)
             msg = json.loads(message)
             if msg['op'] == 'proxy':
-                proxy = self
+                proxy = Proxy(self)
+                proxies.append(proxy)
                 print "It's a proxy!"
-            elif msg['op'] == 'video':
+                print "Proxy ID = ", proxy.id
+            #TODO beware when auth is included.
+            elif msg['op'] == 'auth': #In the authorization is included the proxy id
+                for proxy in proxies:
+                    if msg['proxy_id'] == proxy.id: # if the proxy_id is found, the Client is created and binded to a proxy
+                        client = Client(proxy,self)
+                        clients.append(client)
+                        proxy.clients.append(client)
+                        print "Client binded to proxy = ", proxy.id
+                        break
+            elif msg['op'] == 'videoData':
                 if connToClient is not None:
                     if not connToClient.request.connection.stream.closed():
                         decoded = base64.b64decode(msg['data'])
@@ -90,27 +103,58 @@ class RosbridgeProxyHandler(WebSocketHandler):
                     connToClient.finish()
                     print "Connection Finished"
 
-            if self == proxy:
-                for client in clients:
-                    if client != proxy:
+            for proxy in proxies:
+                if self == proxy.conn:
+                    for client in proxy.clients:
                         client.write_message(message)
-            else:
-                if proxy is not None:
-                    proxy.write_message(message)
+                    break
+            for client in clients:
+                if client.conn == self:
+                    client.proxy.write_message(message)
+                    break
         except:
             print "Unexpected error:", sys.exc_info()[0]
             traceback.print_exc()
 
     def on_close(self):
-        global clients_connected, proxy
+        global clients_connected, proxies, clients
         clients_connected = clients_connected - 1
         print "Client disconnected. %d clients total." % clients_connected
-        clients.remove(self)
-        if self == proxy:
-            proxy = None
+        for client in clients:
+            if client.conn == self:
+                clients.remove(client)
+                print "client removed"
+                break
+        for proxy in proxies:
+            if proxy.conn == self:
+                proxies.remove(proxy)
+                print "proxy removed"
+                break
+        for proxy in proxies:
+            for client in proxy.clients:
+                if client.conn == self:
+                    clients.remove(client)
+                    break
+
 
     def check_origin(self, origin):
         return True
+
+class Proxy():
+    id = 1
+    clients = []
+    def __init__(self,proxyConn):
+        self.conn = proxyConn
+        self.id = Proxy.id
+        Proxy.id += 1
+
+class Client():
+    id = 1
+    def __init__(self,proxy,conn):
+        self.proxy = proxy
+        self.conn = conn
+        self.id = Client.id
+        Client.id += 1
 
 
 def main():
