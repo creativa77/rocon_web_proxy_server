@@ -41,6 +41,7 @@ $(document).ready(function () {
   deleteUrl();
   listItemSelect();
   startApp();
+  userLogin();
   getBrowser();
 
   if(defaultUrl != undefined) {
@@ -115,6 +116,8 @@ function setROSCallbacks() {
 
     $("#connectBtn").show();
     $("#disconnectBtn").hide();
+    $("#userlogin").show();
+    $("#loginBtn").show();
         
     initList();
   });
@@ -126,8 +129,6 @@ function setROSCallbacks() {
     $("#disconnectBtn").show();
     initPublisher();
     initList();
-    displayMasterInfo();
-    getRoles();
     masterInfoMode();
     publishRemoconStatus();
   });
@@ -299,8 +300,10 @@ function displayMasterInfo() {
 */
 function getRoles() {
   var browser = getBrowser();
+  var user_name = $("#user").val();
   var request = new ROSLIB.ServiceRequest({
-    uri : 'rocon:/*/*/*/' + browser
+    uri : 'rocon:/*/*/*/' + browser,
+    user : user_name
   });
   ros.getServicesForType('rocon_interaction_msgs/GetRoles', function(service_name){
     if (service_name !== undefined || service_name.length > 0){
@@ -334,9 +337,11 @@ function displayRoles() {
 */
 function getInteractions(selectedRole) {
   var browser = getBrowser();
+  var user_name = $("#user").val();
   var request = new ROSLIB.ServiceRequest({
     roles : [selectedRole],
-    uri : 'rocon:/*/*/*/' + browser
+    uri : 'rocon:/*/*/*/' + browser,
+    user : user_name
   });
   ros.getServicesForType('rocon_interaction_msgs/GetInteractions', function(service_name){
     if (service_name !== undefined || service_name.length > 0){
@@ -518,6 +523,25 @@ function checkRunningInteraction (window_handler, window_key){
   }
 }
 
+function userLogin() {
+  $("#loginBtn").click(function () {
+    login();
+   });
+  }
+
+function login() {
+  var user_name = $("#user").val();
+  var user_pass = $("#pass").val();
+  ros.callOnConnection({
+    op: 'auth',
+    user: user_name,
+    pass: user_pass,
+    });
+    displayMasterInfo();
+    getRoles();
+    $("#userlogin").hide();
+}
+
 /**
   * Event function when 'Start App' button is clicked
   *
@@ -608,6 +632,7 @@ function masterInfoMode() {
     $("#masterinfo").show();
     $("#urladdBtn").hide();
     $("#urldeleteBtn").hide();
+    $("#userlogin").show();
 }
 
 /**
@@ -620,6 +645,7 @@ function addUrlMode() {
     $("#masterinfo").hide();
     $("#urladdBtn").show();
     $("#urldeleteBtn").show();
+    $("#userlogin").hide();
 }
 
 /**
