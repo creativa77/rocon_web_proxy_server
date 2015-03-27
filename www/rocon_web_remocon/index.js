@@ -421,9 +421,9 @@ function prepareWebappUrl(interaction, baseUrl) {
   parser.href = ros.socket.url;
   // Override parameters to point to the same server
   interactionData['parameters'].rosbridge_address = parser.hostname;
-  interactionData['parameters'].rosbridge_port = parser.port;
+  interactionData['parameters'].rosbridge_port = parser.port || "80";
   interactionData['parameters'].video_steamer_host = parser.hostname;
-  interactionData['parameters'].video_steamer_port = parser.port;
+  interactionData['parameters'].video_steamer_port = parser.port || "80";
 
   // Package all the data in json format and dump it to one query string variable
   queryStringMappings = {};
