@@ -11,6 +11,8 @@ from tornado.websocket import WebSocketHandler
 from tornado.web import asynchronous
 import json
 import random
+import uuid
+
 
 # Global ID seed for clients
 clients_connected = 0
@@ -28,8 +30,8 @@ class HttpHandler(tornado.web.RequestHandler):
         args['height'] = self.get_argument('height','480')
         args['width'] = self.get_argument('width','640')
 
-        user_id = self.get_cookie('user_id')
-        if user_id != None:
+        session_id = self.get_cookie('session_id')
+        if session_id != None:
 
             self.set_status(200)
             self.set_header('server', 'example')
@@ -41,14 +43,14 @@ class HttpHandler(tornado.web.RequestHandler):
             self.set_header('content-type', 'multipart/x-mixed-replace;boundary='
                         '--boundarydonotcross')
 
-            client = clients.get(int(user_id))
+            client = clients.get(session_id)
             if client != None:
                 message = json.dumps({"op":"videoStart", "url_params" : args})
                 client.video_conn = self
                 if client.proxy != None:
                     client.proxy.conn.write_message(message)
         else:
-            #self.set_cookie('user_id','1')
+            #self.set_cookie('session_id','1')
             self.set_status(401)
             self.finish()
 
@@ -97,14 +99,17 @@ class RosbridgeProxyHandler(WebSocketHandler):
                 self.end_video()
             else:
                 #TODO TEMP
-                user_id = self.get_cookie('user_id')
-                if user_id != None:
-                    client = clients.get(int(user_id))
-                    if client != None and client.proxy == None:
+                session_id = self.get_cookie('session_id')
+                if session_id != None:
+                    client = clients.get(session_id)
+                    if client == None:
+                        client = Client(session_id)
                         client.ws_conn = self
+                        clients[session_id] = client
+                    if client.proxy == None:
                         proxy = proxies[-1]
                         client.proxy = proxy
-                        print "Client", user_id," binded to proxy ", proxy.name
+                        print "Client", session_id," binded to proxy ", proxy.name
                 self.pass_message(msg,clients)
         except Exception as e:
             print "Unexpected error:", sys.exc_info()[0]
@@ -128,6 +133,7 @@ class RosbridgeProxyHandler(WebSocketHandler):
                         print "Navigator closed"
                         client.proxy.conn.write_message('{"op":"endVideo"}')
                         client.video_conn = None
+                        self.remove_client(clients, client)
         except Exception as e:
             print e
 
@@ -138,18 +144,18 @@ class RosbridgeProxyHandler(WebSocketHandler):
                 client.video_conn = None
 
     def pass_message(self, msg, clients):
-        user_id = self.get_cookie('user_id')
-        if user_id != None:
-            client = clients.get(int(user_id))
+        session_id = self.get_cookie('session_id')
+        if session_id != None:
+            client = clients.get(session_id)
             if client != None and client.proxy != None:
-                msg['user_id'] = client.user_id
+                msg['session_id'] = client.session_id
                 message = json.dumps(msg)
                 client.proxy.conn.write_message(message)
         else:
-            dest = msg.get('user_id')
+            dest = msg.get('session_id')
             message = json.dumps(msg)
             if dest != None:
-                client = clients.get(int(dest))
+                client = clients.get(dest)
                 if client != None and client.ws_conn != None:
                     client.ws_conn.write_message(message)
             else:
@@ -164,17 +170,23 @@ class RosbridgeProxyHandler(WebSocketHandler):
         global clients_connected, proxies, clients
         clients_connected = clients_connected - 1
         print "Client disconnected. %d clients total." % clients_connected
-        #for client in clients:
-        #    if client.conn == self:
-        #        clients.remove(client)
-        #        print "client removed"
-        #        break
-        for proxy in proxies:
-            if proxy.conn == self:
-                proxies.remove(proxy)
-                print "proxy removed"
-                break
+        session_id = self.get_cookie('session_id')
+        if session_id != None:
+            client = clients.get(session_id)
+            if client != None:
+                client.ws_conn = None
+                self.remove_client(clients,client)
+        else:
+            for proxy in proxies:
+                if proxy.conn == self:
+                    proxies.remove(proxy)
+                    print "proxy removed"
+                    break
 
+    def remove_client(self,clients,client):
+        if client.ws_conn == None and client.video_conn == None:
+            del clients[client.session_id]
+            print "Client Removed"
 
     def check_origin(self, origin):
         return True
@@ -187,23 +199,19 @@ class Proxy():
         Proxy.name += 1
 
 class Client():
-    user_id = 1
-    def __init__(self,proxy=None,ws_conn=None,video_conn=None):
+    def __init__(self,session_id,proxy=None,ws_conn=None,video_conn=None):
         self.proxy = proxy
         self.ws_conn = ws_conn
         self.video_conn = video_conn
-        self.user_id = Client.user_id
-        Client.user_id += 1
+        self.session_id = session_id
 
 class MyFileHandler(tornado.web.StaticFileHandler):
     def set_headers(self):
         global clients
-        cookie = self.get_cookie('user_id')
+        cookie = self.get_cookie('session_id')
         if cookie == None:
             print "No cookie, client created"
-            client = Client()
-            clients[client.user_id] = client
-            self.set_cookie('user_id',str(client.user_id))
+            self.set_cookie('session_id',str(uuid.uuid1()))
         super(MyFileHandler,self).set_headers()
 
 
