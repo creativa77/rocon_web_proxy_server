@@ -155,10 +155,12 @@ class RosbridgeProxyHandler(WebSocketHandler):
             dest = msg.get('session_id')
             message = json.dumps(msg)
             if dest != None:
+                print "Sending to dest ", dest
                 client = clients.get(dest)
                 if client != None and client.ws_conn != None:
                     client.ws_conn.write_message(message)
             else:
+                print "Sending to all"
                 #TODO IF NO DEST, SEND TO ALL
                 for client in clients.itervalues():
                     if client.ws_conn != None:
@@ -185,6 +187,8 @@ class RosbridgeProxyHandler(WebSocketHandler):
 
     def remove_client(self,clients,client):
         if client.ws_conn == None and client.video_conn == None:
+            msg = json.dumps({"op":"endConn","session_id" : client.session_id})
+            client.proxy.conn.write_message(msg)
             del clients[client.session_id]
             print "Client Removed"
 
