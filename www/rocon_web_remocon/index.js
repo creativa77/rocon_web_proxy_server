@@ -300,6 +300,7 @@ function displayMasterInfo() {
 */
 function getRoles() {
   var browser = getBrowser();
+  var user_name = $("#user").val();
   var request = new ROSLIB.ServiceRequest({
     uri : 'rocon:/*/*/*/' + browser,
     user : user_name
@@ -336,6 +337,7 @@ function displayRoles() {
 */
 function getInteractions(selectedRole) {
   var browser = getBrowser();
+  var user_name = $("#user").val();
   var request = new ROSLIB.ServiceRequest({
     roles : [selectedRole],
     uri : 'rocon:/*/*/*/' + browser,
@@ -522,7 +524,6 @@ function checkRunningInteraction (window_handler, window_key){
 }
 
 function userLogin() {
-  $("#userlogin").hide();
   $("#loginBtn").click(function () {
     login();
    });
@@ -538,6 +539,7 @@ function login() {
     });
     displayMasterInfo();
     getRoles();
+    $("#userlogin").hide();
 }
 
 /**
