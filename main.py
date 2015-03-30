@@ -45,12 +45,11 @@ class HttpHandler(tornado.web.RequestHandler):
 
             client = clients.get(session_id)
             if client != None:
-                message = json.dumps({"op":"videoStart", "url_params" : args})
+                message = json.dumps({"op":"videoStart", "url_params" : args, "session_id": session_id})
                 client.video_conn = self
                 if client.proxy != None:
                     client.proxy.conn.write_message(message)
         else:
-            #self.set_cookie('session_id','1')
             self.set_status(401)
             self.finish()
 
@@ -96,7 +95,7 @@ class RosbridgeProxyHandler(WebSocketHandler):
             elif msg['op'] == 'videoData':
                 self.send_video(msg,clients)
             elif msg['op'] == 'endVideo':
-                self.end_video()
+                self.end_video(clients,msg)
             else:
                 #TODO TEMP
                 session_id = self.get_cookie('session_id')
@@ -123,25 +122,28 @@ class RosbridgeProxyHandler(WebSocketHandler):
 
     def send_video(self, msg, clients):
         try:
-            for client in clients.itervalues():
-                if client.video_conn != None:
-                    if not client.video_conn.request.connection.stream.closed():
-                        decoded = base64.b64decode(msg['data'])
-                        client.video_conn.write(decoded)
-                        client.video_conn.flush()
-                    else:
-                        print "Navigator closed"
-                        client.proxy.conn.write_message('{"op":"endVideo"}')
-                        client.video_conn = None
-                        self.remove_client(clients, client)
+            session_id = msg["session_id"]
+            client = clients.get(session_id)
+            if client != None and client.video_conn != None:
+                if not client.video_conn.request.connection.stream.closed():
+                    decoded = base64.b64decode(msg['data'])
+                    client.video_conn.write(decoded)
+                    client.video_conn.flush()
+                else:
+                    print "Navigator closed"
+                    client.proxy.conn.write_message(json.dumps({"op":"endVideo","session_id":session_id}))
+                    client.video_conn = None
+                    self.remove_client(clients, client)
         except Exception as e:
             print e
 
-    def end_video(self, clients):
-        for client in clients.itervalues():
-            if client.video_conn != None:
-                client.video_conn.finish()
-                client.video_conn = None
+    def end_video(self, clients, msg):
+        session_id = msg["session_id"]
+        client = clients.get(session_id)
+        if client != None:
+            client.video_conn.finish()
+            client.video_conn = None
+            self.remove_client(clients,client)
 
     def pass_message(self, msg, clients):
         session_id = self.get_cookie('session_id')
@@ -186,11 +188,12 @@ class RosbridgeProxyHandler(WebSocketHandler):
                     break
 
     def remove_client(self,clients,client):
-        if client.ws_conn == None and client.video_conn == None:
+        if client.ws_conn == None:
             msg = json.dumps({"op":"endConn","session_id" : client.session_id})
             client.proxy.conn.write_message(msg)
-            del clients[client.session_id]
-            print "Client Removed"
+            if client.video_conn == None:
+                del clients[client.session_id]
+                print "Client Removed"
 
     def check_origin(self, origin):
         return True
