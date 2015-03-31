@@ -90,8 +90,9 @@ class RosbridgeProxyHandler(WebSocketHandler):
                 client = clients[session_id]
                 client.authenticated = auth
                 print "Client ", session_id ," authenticated ", auth
-                #TODO SEND AUTH OK TO CLIENT
-                client.ws_conns[-1].close()
+                #TODO SEND AUTH MSG TO CLIENT
+                if not auth:
+                    client.ws_conns[-1].close()
             elif msg.get('session_id') != None:    
                 #It's a proxy to client msg
                 if msg['op'] == 'videoData':
