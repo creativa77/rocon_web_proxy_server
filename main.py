@@ -44,14 +44,14 @@ class HttpHandler(tornado.web.RequestHandler):
                         '--boundarydonotcross')
 
             client = clients.get(session_id)
-            if client != None:
-                message = json.dumps({"op":"videoStart", "url_params" : args, "session_id": session_id})
-                client.video_conn = self
-                if client.proxy != None:
+            if client != None and client.proxy != None:
+                if client.authenticated or not proxy.user_auth:
+                    message = json.dumps({"op":"videoStart", "url_params" : args, "session_id": session_id})
+                    client.video_conn = self
                     client.proxy.conn.write_message(message)
-        else:
-            self.set_status(401)
-            self.finish()
+                    return
+        self.set_status(401)
+        self.finish()
 
 
 class RosbridgeProxyHandler(WebSocketHandler):
@@ -82,40 +82,55 @@ class RosbridgeProxyHandler(WebSocketHandler):
         try:
             msg = json.loads(message)
             if msg['op'] == 'proxy':
-                self.add_proxy(proxies)
-            #TODO beware when auth is included.
-            elif msg['op'] == 'auth': #In the authorization is included the proxy id
-                for proxy in proxies:
-                    if msg['proxy_id'] == proxy.name: # if the proxy_id is found, the Client is created and binded to a proxy
-                        client = Client(proxy,self)
-                        #SET COOKIES
-                        clients.append(client)
-                        print "Client binded to proxy = ", proxy.name
-                        break
-            elif msg['op'] == 'videoData':
-                self.send_video(msg,clients)
-            elif msg['op'] == 'endVideo':
-                self.end_video(clients,msg)
+                self.add_proxy(msg,proxies)
+            elif msg['op'] == 'auth_client':
+                session_id = msg['session_id']
+                auth = msg['authentication']
+                client = clients[session_id]
+                client.authenticated = auth
+                print "Client ", session_id ," authenticated ", auth
+                #TODO SEND AUTH OK TO CLIENT
+            elif msg.get('session_id') != None:    
+                #It's a proxy to client msg
+                if msg['op'] == 'videoData':
+                    self.send_video(msg,clients)
+                elif msg['op'] == 'endVideo':
+                    self.end_video(clients,msg)
+                else:
+                    self.pass_message(msg,clients)
             else:
-                #TODO TEMP
+                #It's not a proxy, check for auth
                 session_id = self.get_cookie('session_id')
-                if session_id != None:
-                    client = clients.get(session_id)
-                    if client == None:
-                        client = Client(session_id)
-                        client.ws_conn = self
-                        clients[session_id] = client
-                    if client.proxy == None:
-                        proxy = proxies[-1]
-                        client.proxy = proxy
-                        print "Client", session_id," binded to proxy ", proxy.name
-                self.pass_message(msg,clients)
+                client = clients.get(session_id)
+                if client == None:
+                    client = Client(session_id)
+                    clients[session_id] = client
+                client.ws_conns.append(self)
+                #TODO TEMP PROXY SHOULD COME IN AUTH MESS
+                if client.proxy == None:
+                    proxy = proxies[-1]
+                    client.proxy = proxy
+                    print "Client", session_id," binded to proxy ", proxy.name
+                if client.proxy.user_auth and not client.authenticated:
+
+                    if msg['op'] == 'auth': #In the authentication is included the proxy id
+                        msg['session_id'] = session_id
+                        message = json.dumps(msg)
+                        client.proxy.conn.write_message(message)
+                    else:
+                        print "Client not authenticated"
+                        client.ws_conns.remove(self)
+                        self.close()
+                else:
+                    self.pass_message(msg,clients)
         except Exception as e:
             print "Unexpected error:", sys.exc_info()[0]
             traceback.print_exc()
 
-    def add_proxy(self,proxies):
-        proxy = Proxy(self)
+    def add_proxy(self,msg,proxies):
+        user_auth = msg['user_auth']
+        proxy = Proxy(self,user_auth)
+
         proxies.append(proxy)
         print "It's a proxy!"
         print "Proxy ID = ", proxy.name
@@ -159,14 +174,14 @@ class RosbridgeProxyHandler(WebSocketHandler):
             if dest != None:
                 print "Sending to dest ", dest
                 client = clients.get(dest)
-                if client != None and client.ws_conn != None:
-                    client.ws_conn.write_message(message)
+                if client != None and client.ws_conns[-1]!= None:
+                    client.ws_conns[-1].write_message(message)
             else:
                 print "Sending to all"
                 #TODO IF NO DEST, SEND TO ALL
                 for client in clients.itervalues():
-                    if client.ws_conn != None:
-                        client.ws_conn.write_message(message)
+                    if client.ws_conns[-1] != None:
+                        client.ws_conns[-1].write_message(message)
 
 
 
@@ -178,8 +193,9 @@ class RosbridgeProxyHandler(WebSocketHandler):
         if session_id != None:
             client = clients.get(session_id)
             if client != None:
-                client.ws_conn = None
-                self.remove_client(clients,client)
+               # client.ws_conn = None
+               # self.remove_client(clients,client)
+               pass
         else:
             for proxy in proxies:
                 if proxy.conn == self:
@@ -200,15 +216,18 @@ class RosbridgeProxyHandler(WebSocketHandler):
 
 class Proxy():
     name = 1
-    def __init__(self,proxyConn):
+    def __init__(self,proxyConn,user_auth=False):
         self.conn = proxyConn
         self.name = Proxy.name
+        self.user_auth = user_auth
         Proxy.name += 1
 
 class Client():
     def __init__(self,session_id,proxy=None,ws_conn=None,video_conn=None):
         self.proxy = proxy
-        self.ws_conn = ws_conn
+        self.authenticated = False
+        self.ws_conns = []
+        self.ws_conns.append(ws_conn)
         self.video_conn = video_conn
         self.session_id = session_id
 
