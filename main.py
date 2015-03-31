@@ -50,6 +50,7 @@ class HttpHandler(tornado.web.RequestHandler):
                     client.video_conn = self
                     client.proxy.conn.write_message(message)
                     return
+        #TODO Include a better error response
         self.set_status(401)
         self.finish()
 
@@ -89,7 +90,9 @@ class RosbridgeProxyHandler(WebSocketHandler):
                 client = clients[session_id]
                 client.authenticated = auth
                 print "Client ", session_id ," authenticated ", auth
-                #TODO SEND AUTH OK TO CLIENT
+                #TODO SEND AUTH MSG TO CLIENT
+                if not auth:
+                    client.ws_conns[-1].close()
             elif msg.get('session_id') != None:    
                 #It's a proxy to client msg
                 if msg['op'] == 'videoData':
@@ -110,7 +113,7 @@ class RosbridgeProxyHandler(WebSocketHandler):
                 if client.proxy == None:
                     proxy = proxies[-1]
                     client.proxy = proxy
-                    print "Client", session_id," binded to proxy ", proxy.name
+                    print "Client", session_id," bound to proxy ", proxy.name
                 if client.proxy.user_auth and not client.authenticated:
 
                     if msg['op'] == 'auth': #In the authentication is included the proxy id
