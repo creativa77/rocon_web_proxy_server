@@ -118,6 +118,7 @@ function setROSCallbacks() {
     $("#disconnectBtn").hide();
     $("#userlogin").show();
     $("#loginBtn").show();
+    $("#continueBtn").show()
         
     initList();
   });
@@ -127,10 +128,10 @@ function setROSCallbacks() {
 
     $("#connectBtn").hide();
     $("#disconnectBtn").show();
-    initPublisher();
+    //initPublisher();
     initList();
     masterInfoMode();
-    publishRemoconStatus();
+    //publishRemoconStatus();
   });
 
   ros.on('close', function() {
@@ -185,10 +186,10 @@ function connect() {
     var newUrl;
     newUrl = url.replace("ws://", "");
 
-    for (var i = 0; i < newUrl.length; i++) {
-      newUrl = newUrl.replace("/", "");
-      newUrl = newUrl.replace(" ", "");
-    }
+    //for (var i = 0; i < newUrl.length; i++) {
+    //  newUrl = newUrl.replace("/", "");
+    //  newUrl = newUrl.replace(" ", "");
+    //}
         
     // set default port
     if (newUrl.search(":") < 0) {
@@ -527,19 +528,29 @@ function userLogin() {
   $("#loginBtn").click(function () {
     login();
    });
+
+  $("#continueBtn").click(function (){
+    afterLogin();
+   });
   }
 
 function login() {
   var user_name = $("#user").val();
   var user_pass = $("#pass").val();
+
   ros.callOnConnection({
     op: 'auth',
     user: user_name,
     pass: user_pass,
     });
-    displayMasterInfo();
-    getRoles();
-    $("#userlogin").hide();
+}
+
+function afterLogin() {
+  initPublisher();
+  publishRemoconStatus();
+  displayMasterInfo();
+  getRoles();
+  $("#userlogin").hide();
 }
 
 /**
