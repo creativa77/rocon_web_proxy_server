@@ -32,7 +32,6 @@ class HttpHandler(tornado.web.RequestHandler):
 
         session_id = self.get_cookie('session_id')
         if session_id != None:
-
             self.set_status(200)
             self.set_header('server', 'example')
             self.set_header('connection', 'close')
@@ -44,11 +43,12 @@ class HttpHandler(tornado.web.RequestHandler):
                         '--boundarydonotcross')
 
             client = clients.get(session_id)
-            if client != None and client.proxy != None:
+            if client is not None and client.proxy is not None:
                 if client.authenticated or not proxy.user_auth:
                     message = json.dumps({"op":"videoStart", "url_params" : args, "session_id": session_id})
+                    if client.video_conn is None:
+                        client.proxy.conn.write_message(message)
                     client.video_conn = self
-                    client.proxy.conn.write_message(message)
                     return
         #TODO Include a better error response
         self.set_status(401)
@@ -64,7 +64,6 @@ class RosbridgeProxyHandler(WebSocketHandler):
     def open(self):
         global clients_connected, authenticate, clients
         clients_connected += 1
-        print self.request.remote_ip
         print "Client connected.  %d clients total." % clients_connected
         self.io_loop.add_timeout(datetime.timedelta(seconds=self.ping_interval), self.send_ping)
 
@@ -93,7 +92,7 @@ class RosbridgeProxyHandler(WebSocketHandler):
                 #TODO SEND AUTH MSG TO CLIENT
                 if not auth:
                     client.ws_conns[-1].close()
-            elif msg.get('session_id') != None:    
+            elif msg.get('session_id') != None:
                 #It's a proxy to client msg
                 if msg['op'] == 'videoData':
                     self.send_video(msg,clients)
@@ -175,12 +174,10 @@ class RosbridgeProxyHandler(WebSocketHandler):
             dest = msg.get('session_id')
             message = json.dumps(msg)
             if dest != None:
-                print "Sending to dest ", dest
                 client = clients.get(dest)
                 if client != None and client.ws_conns[-1]!= None:
                     client.ws_conns[-1].write_message(message)
             else:
-                print "Sending to all"
                 #TODO IF NO DEST, SEND TO ALL
                 for client in clients.itervalues():
                     if client.ws_conns[-1] != None:
