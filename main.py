@@ -44,7 +44,7 @@ class HttpHandler(tornado.web.RequestHandler):
 
             client = clients.get(session_id)
             if client is not None and client.proxy is not None:
-                if client.authenticated or not proxy.user_auth:
+                if client.authenticated or not proxy.enable_authentication:
                     message = json.dumps({"op":"videoStart", "url_params" : args, "session_id": session_id})
                     if client.video_conn is None:
                         client.proxy.conn.write_message(message)
@@ -113,7 +113,7 @@ class RosbridgeProxyHandler(WebSocketHandler):
                     proxy = proxies[-1]
                     client.proxy = proxy
                     print "Client", session_id," bound to proxy ", proxy.name
-                if client.proxy.user_auth and not client.authenticated:
+                if client.proxy.enable_authentication and not client.authenticated:
 
                     if msg['op'] == 'auth': #In the authentication is included the proxy id
                         msg['session_id'] = session_id
@@ -130,8 +130,8 @@ class RosbridgeProxyHandler(WebSocketHandler):
             traceback.print_exc()
 
     def add_proxy(self,msg,proxies):
-        user_auth = msg['user_auth']
-        proxy = Proxy(self,user_auth)
+        enable_authentication = msg['enable_authentication']
+        proxy = Proxy(self, enable_authentication)
 
         proxies.append(proxy)
         print "It's a proxy!"
@@ -216,10 +216,10 @@ class RosbridgeProxyHandler(WebSocketHandler):
 
 class Proxy():
     name = 1
-    def __init__(self,proxyConn,user_auth=False):
+    def __init__(self,proxyConn, enable_authentication=False):
         self.conn = proxyConn
         self.name = Proxy.name
-        self.user_auth = user_auth
+        self.enable_authentication = enable_authentication
         Proxy.name += 1
 
 class Client():
