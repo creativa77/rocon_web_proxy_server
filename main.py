@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 import os
 import sys
 import traceback
@@ -242,16 +243,17 @@ class MyFileHandler(tornado.web.StaticFileHandler):
 
 
 def main():
+    filehandler_path = str(os.environ.get("FILEPATH", "./www"))
+    port = int(os.environ.get("PORT", 9090))
     application = tornado.web.Application([
         (r"/stream", HttpHandler),
         (r"/ws", RosbridgeProxyHandler),
-        (r"/(.*)", MyFileHandler, {"path": "./www"}),
+        (r"/(.*)", MyFileHandler, {"path": filehandler_path}),
     ])
     http_server = tornado.httpserver.HTTPServer(application)
-    port = int(os.environ.get("PORT", 9090))
     http_server.listen(port)
 
-    print "ROCON Web Proxy Server started on port %d" % port
+    print "ROCON Web Proxy Server started on port [%d], Filepath [%s]" % (port, filehandler_path)
 
     tornado.ioloop.IOLoop.instance().start()
 
