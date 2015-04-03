@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 import os
 import sys
 import traceback
@@ -247,12 +248,12 @@ def main():
     application = tornado.web.Application([
         (r"/stream", HttpHandler),
         (r"/ws", RosbridgeProxyHandler),
-        (r"/(.*)", MyFileHandler, {"path": "./www"}),
+        (r"/(.*)", MyFileHandler, {"path": filehandler_path}),
     ])
     http_server = tornado.httpserver.HTTPServer(application)
     http_server.listen(port)
 
-    print "ROCON Web Proxy Server started on port %d" % port
+    print "ROCON Web Proxy Server started on port [%d], Filepath [%s]" % (port, filehandler_path)
 
     tornado.ioloop.IOLoop.instance().start()
 
