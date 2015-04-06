@@ -31,6 +31,8 @@ var gRemoconPlatformInfo = {
              }
 };
 
+var proxy_name;
+
 // Starts here
 $(document).ready(function () {
   init();
@@ -38,11 +40,10 @@ $(document).ready(function () {
   userLogin();
   getBrowser();
 
-  defaultUrl = "ws://localhost:9090/ws"
-  if(defaultUrl != undefined) {
-    gUrl = defaultUrl;
-    ros.connect(defaultUrl);
-  }
+  var host = document.location.host;
+  defaultUrl = "ws://" + host + "/ws"
+  gUrl = defaultUrl;
+  ros.connect(defaultUrl);
 });
 
 
@@ -68,6 +69,7 @@ function initPublisher(){
   * @function init
 */
 function init() {
+  $("#userlogin").hide();
   setROSCallbacks();
   initList();
 }
@@ -90,7 +92,6 @@ function setROSCallbacks() {
 
   ros.on('connection', function() {
     console.log('Connection made!');
-
     initList();
     getConcerts();
   });
@@ -108,13 +109,14 @@ function setROSCallbacks() {
   * @function getConcerts
 */
 function getConcerts() {
+  var uri = "http://" + document.location.host + "/proxy_list";
   $.ajax({
-      url: "http://localhost:9090/proxy_list"
+      url: uri
     }).then(function(obj){
       data = JSON.parse(obj)
       for (var i = 0; i < data.concerts.length; i++) {
          console.log('adding concert')
-         gListConcerts.push(data.concerts[i].name);
+         gListConcerts.push(data.concerts[i]);
       }
       displayConcerts();
     });
@@ -127,7 +129,7 @@ function getConcerts() {
 */
 function displayConcerts() {
   for (var i = 0; i < gListConcerts.length; i++) {
-    $("#concert_listgroup").append('<a href="#" id="concertlist_' + i + '" class="list-group-item"><strong>' + gListConcerts[i] + '</strong></a>');
+    $("#concert_listgroup").append('<a href="#" id="concertlist_' + i + '" class="list-group-item"><strong>' + gListConcerts[i].name + '</strong></a>');
   }
 }
 
@@ -150,8 +152,12 @@ function listItemSelect() {
 
     var index = $(this).attr('id').charAt($(this).attr('id').length - 1);
     
-    //getInteractions(gListRoles[index]);
-    //TODO CHECK IF IT NEEDS AUTHENTICATION
+    proxy_name = gListConcerts[index].name;
+    if (gListConcerts[index].user_auth == true) {
+      $("#userlogin").show();
+    } else {
+      $("#userlogin").hide();
+    }
   });
 
 }
@@ -162,7 +168,7 @@ function userLogin() {
    });
 
   $("#continueBtn").click(function (){
-    afterLogin();
+    continueToRemocon();
    });
   }
 
@@ -170,19 +176,31 @@ function login() {
   var user_name = $("#user").val();
   var user_pass = $("#pass").val();
 
+  ros.once('login',function(message){
+      afterLogin(message);
+  });
   ros.callOnConnection({
     op: 'auth',
     user: user_name,
     pass: user_pass,
+    proxy_name: proxy_name,
     });
 }
 
-function afterLogin() {
-  initPublisher();
-  publishRemoconStatus();
-  displayMasterInfo();
-  getRoles();
-  $("#userlogin").hide();
+function afterLogin(message) {
+  if (message.login_result == true){
+    console.log('Login!! Redirect to index');
+    user = $("#user").val();
+    var url = "./index.html?username=" + user;
+    window.location.replace(url);
+  }else{
+    alert("Wrong user or password.")
+    console.log("Wrong user or password.");
+  }
+}
+
+function continueToRemocon(){
+  window.location.replace("./index.html");
 }
 
 /**

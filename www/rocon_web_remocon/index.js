@@ -32,23 +32,35 @@ var gRemoconPlatformInfo = {
              }
 };
 
+var user_name;
+
 // Starts here
 $(document).ready(function () {
   init();
-  connect();
-  disconnect();
-  addUrl();
-  deleteUrl();
   listItemSelect();
   startApp();
-  userLogin();
   getBrowser();
 
-  if(defaultUrl != undefined) {
-    gUrl = defaultUrl;
-    ros.connect(defaultUrl);
-  }
+  user_name = getParameterByName('username');
+
+  var host = document.location.host;
+  defaultUrl = "ws://"+ host + "/ws";
+  gUrl = defaultUrl;
+  ros.connect(defaultUrl);
+
+  initPublisher();
+  publishRemoconStatus();
+  displayMasterInfo();
+  getRoles();
+
 });
+
+function getParameterByName(name) {
+  name = name.replace(/[\[]/, "\\[").replace(/[\]]/, "\\]");
+  var regex = new RegExp("[\\?&]" + name + "=([^&#]*)"),
+  results = regex.exec(location.search);
+  return results === null ? "" : decodeURIComponent(results[1].replace(/\+/g, " "));
+}
 
 
 /**
@@ -99,7 +111,6 @@ function publishRemoconStatus(){
 */
 function init() {
   setROSCallbacks();
-  readCookies();
   initList();
 }
 
@@ -113,21 +124,11 @@ function setROSCallbacks() {
     // throw exception for error
     console.log('Connection refused. Is the master running?');
     alert('Connection refused. Is the master running?');
-
-    $("#connectBtn").show();
-    $("#disconnectBtn").hide();
-    $("#userlogin").show();
-    $("#loginBtn").show();
-    $("#continueBtn").show()
-        
     initList();
   });
 
   ros.on('connection', function() {
     console.log('Connection made!');
-
-    $("#connectBtn").hide();
-    $("#disconnectBtn").show();
     //initPublisher();
     initList();
     masterInfoMode();
@@ -136,9 +137,6 @@ function setROSCallbacks() {
 
   ros.on('close', function() {
     console.log('Connection closed.');
-
-    $("#connectBtn").show();
-    $("#disconnectBtn").hide();
         
     initList();
   });
@@ -167,110 +165,9 @@ function readCookies() {
   }
 }
 
-/**
-  * Event function when 'Connect' button clicked
-  *
-  * @function connect
-*/
-function connect() {
-  $("#connectBtn").click(function () {
-    var url = $("#urlList option:selected").val();
-    
-    if (url == "(Please add URL)") {
-      return;
-    }
 
-    gUrl = url;
 
-    // extract the exact url
-    var newUrl;
-    newUrl = url.replace("ws://", "");
 
-    //for (var i = 0; i < newUrl.length; i++) {
-    //  newUrl = newUrl.replace("/", "");
-    //  newUrl = newUrl.replace(" ", "");
-    //}
-        
-    // set default port
-    if (newUrl.search(":") < 0) {
-      newUrl += ":9090";
-    }
-
-    ros.connect('ws://' + newUrl);
-  });
-}
-
-/**
-  * Event function when 'Disconnect' button clicked
-  *
-  * @function disconnect
-*/
-function disconnect() {
-  $("#disconnectBtn").hide();
-  $("#disconnectBtn").click(function () {
-    ros.close();
-    addUrlMode();
-  });
-}
-
-/**
-  * Event function when 'Add Url' button clicked
-  *
-  * @function addUrl
-*/
-function addUrl() {
-  $("#addurl_addBtn").click(function () {
-    var url = $("#typeURL").val();
-
-    // set default string
-    if (url == "" || url == "ws://") {
-      url = "ws://localhost:9090";
-    }
-
-    // add url
-    $("#urlList").append(new Option(url));
-    $("#urlList option:last").attr("selected", "selected");
-    $("#urlList option:last").attr("cookieNum", gCookieCount);
-
-    // add cookie
-    $.cookie("cookie_url" + gCookieCount, url);
-    $.cookie("cookieCount", ++gCookieCount);
-  });
-}
-
-/**
-  * Event function when 'Minus' button clicked
-  *
-  * @function deleteUrl
-*/
-function deleteUrl() {
-  $("#urldeleteBtn").click(function () {
-    if ($("#urlList option:selected").val() != "(Please add URL)") {
-      // delete cookie
-      var cookieNum = $("#urlList option:selected").attr("cookieNum");
-      $.cookie("cookie_url" + cookieNum, null);
-            
-      if (gCookieCount > 0) {
-        $.cookie("cookieCount", --gCookieCount);
-      }
-            
-      $("#urlList option:selected").remove();
-
-      var listCount = $("#urlList option").length;
-      var tempCount = 0;
-
-      // rearrange cookies
-      // not including the first disabled option
-      for (var i = 1; i < listCount; i++) {
-        var url = $("#urlList option:eq(" + i + ")").val();
-
-        $("#urlList option:eq(" + i + ")").attr("cookieNum", tempCount);
-        $.cookie("cookie_url" + tempCount, url);
-        tempCount++;
-      }
-    }
-  });
-}
 
 /**
   * Display master's info to the screen
@@ -301,7 +198,6 @@ function displayMasterInfo() {
 */
 function getRoles() {
   var browser = getBrowser();
-  var user_name = $("#user").val();
   var request = new ROSLIB.ServiceRequest({
     uri : 'rocon:/*/*/*/' + browser,
     user : user_name
@@ -338,7 +234,6 @@ function displayRoles() {
 */
 function getInteractions(selectedRole) {
   var browser = getBrowser();
-  var user_name = $("#user").val();
   var request = new ROSLIB.ServiceRequest({
     roles : [selectedRole],
     uri : 'rocon:/*/*/*/' + browser,
@@ -524,35 +419,6 @@ function checkRunningInteraction (window_handler, window_key){
   }
 }
 
-function userLogin() {
-  $("#loginBtn").click(function () {
-    login();
-   });
-
-  $("#continueBtn").click(function (){
-    afterLogin();
-   });
-  }
-
-function login() {
-  var user_name = $("#user").val();
-  var user_pass = $("#pass").val();
-
-  ros.callOnConnection({
-    op: 'auth',
-    user: user_name,
-    pass: user_pass,
-    });
-}
-
-function afterLogin() {
-  initPublisher();
-  publishRemoconStatus();
-  displayMasterInfo();
-  getRoles();
-  $("#userlogin").hide();
-}
-
 /**
   * Event function when 'Start App' button is clicked
   *
@@ -590,7 +456,6 @@ function initList() {
     initRoleList();
     initInteractionList();
     initDescriptionList();
-    addUrlMode();
 }
 
 /**
@@ -643,20 +508,6 @@ function masterInfoMode() {
     $("#masterinfo").show();
     $("#urladdBtn").hide();
     $("#urldeleteBtn").hide();
-    $("#userlogin").show();
-}
-
-/**
-  * Switch to addurl mode
-  *
-  * @function addUrlMode
-*/
-function addUrlMode() {
-    $("#selecturl").show();
-    $("#masterinfo").hide();
-    $("#urladdBtn").show();
-    $("#urldeleteBtn").show();
-    $("#userlogin").hide();
 }
 
 /**

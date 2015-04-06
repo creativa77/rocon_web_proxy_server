@@ -106,13 +106,13 @@ class RosbridgeProxyHandler(WebSocketHandler):
                 client.authenticated = auth
                 print "Client ", session_id ," authenticated ", auth
                 #TODO SEND AUTH MSG TO CLIENT
+                clientMsg = {}
+                clientMsg['op'] = 'service_response'
+                clientMsg['id'] = 'login'
+                clientMsg['login_result'] = auth
+                client.ws_conns[-1].write_message(json.dumps(clientMsg))
                 if not auth:
                     client.ws_conns[-1].close()
-            elif msg['op'] == 'call_service' and msg['service'] == 'get_concerts':
-                answer = {}
-                answer['id'] = msg['id']
-                answer['op'] = 'service_response'
-                answer['result'] = True
             elif msg.get('session_id') != None:
                 #It's a proxy to client msg
                 if msg['op'] == 'videoData':
@@ -129,23 +129,22 @@ class RosbridgeProxyHandler(WebSocketHandler):
                     client = Client(session_id)
                     clients[session_id] = client
                 client.ws_conns.append(self)
-                #TODO TEMP PROXY SHOULD COME IN AUTH MESS
-                if client.proxy == None:
-                    proxy = proxies[-1]
-                    client.proxy = proxy
-                    print "Client", session_id," bound to proxy ", proxy.name
-                if client.proxy.user_auth and not client.authenticated:
-
-                    if msg['op'] == 'auth': #In the authentication is included the proxy id
-                        msg['session_id'] = session_id
-                        message = json.dumps(msg)
-                        client.proxy.conn.write_message(message)
-                    else:
-                        print "Client not authenticated"
-                        client.ws_conns.remove(self)
-                        self.close()
-                else:
+                if msg['op'] == 'auth': #In the authentication is included the proxy id
+                    msg['session_id'] = session_id
+                    print msg
+                    message = json.dumps(msg)
+                    for proxy in proxies:
+                        if proxy.name == msg['proxy_name']:
+                            client.proxy = proxy
+                            print "Client", session_id," bound to proxy ", proxy.name
+                            break
+                    client.proxy.conn.write_message(message)
+                elif client.authenticated or (client.proxy != None and not client.proxy.user_auth):
                     self.pass_message(msg,clients)
+                else:
+                    print "Client not authenticated"
+                    #self.close()
+                    #client.ws_conns.remove(self)
         except Exception as e:
             print "Unexpected error:", sys.exc_info()[0]
             traceback.print_exc()
