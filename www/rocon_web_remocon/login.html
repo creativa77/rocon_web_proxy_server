@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Rocon Remocon</title>
+
+    <!-- JS, Jquery, Bootstrap, Yaml  -->
+    <script type="text/javascript" src="/rocon_web_common/js/thirdparty/jquery/jquery-1.11.1.min.js"></script>
+    <script type="text/javascript" src="/rocon_web_common/js/thirdparty/jquery/jquery.cookie.js"></script>
+    <script type="text/javascript" src="/rocon_web_common/js/thirdparty/bootstrap/bootstrap.js"></script>
+    <script type="text/javascript" src="/rocon_web_common/js/thirdparty/js-yaml/js-yaml.js"></script>
+
+    <link rel="stylesheet" href="/rocon_web_common/css/bootstrap.css">
+    <link rel="stylesheet" href="/rocon_web_common/css/bootstrap-theme.css">
+    
+    <!-- ROS related -->
+    <script type="text/javascript" src="/rocon_web_common/js/thirdparty/eventemitter2/eventemitter2.js"></script>
+    <script type="text/javascript" src="/rocon_web_common/js/ros/robotwebtools/roslib.js"></script>
+    <script type="text/javascript" src="/rocon_web_common/js/thirdparty/uuid.js"></script>
+
+
+    <!-- etc -->
+    <script type="text/javascript" src="login.js"></script>
+</head>
+
+<body>
+    <div class="container-fluid">
+
+        <!-- Header -->
+        <div class="navbar navbar-inverse navbar-fixed-top">
+            <div class="navbar-inner">
+                <div class="container-fluid">
+                    <img class="navbar-brand" style="height:65px; width:150px;" src="/rocon_web_common/img/rocon_logo.png"></img>
+                    <a class="navbar-brand" href="#" style="margin-top:6px">Web Remocon</a>
+                </div>
+            </div>
+        </div>
+ 
+        <br><br><br><hr>
+        <div class="row">
+          <div class="col-sm-4">
+                <div class="well well-sm">
+                    <h3 class="text-center"><span class="label label-primary">Choose Concert</span></h3>
+                    <div class="list-group" id="concert_listgroup">
+                    </div>
+                </div>
+          </div>
+          
+          
+          <div class="col-sm-4">
+            <div id="userlogin">
+              <div class="well well-sm">
+                <form role="form">
+                  <div class="form-group">
+                    <h5 class="text-center"><strong>User login</strong></h5>
+                    <input type="text" class="form-control" id="user" placeholder="Email">
+                    <input type="text" class="form-control" id="pass" placeholder="Password">
+                  </div>
+                  <div class="row">
+                    <br>
+                    <div class="col-xs-6 col-md-6">
+                      <button type="button" class="btn btn-default btn btn-block" data-target="#userlogin" id="loginBtn">Login</button>
+                    </div>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
+
+    </div>
+    <!-----------footer----------->
+    <footer>
+      <img style="width:90px; height:25px;" src="/rocon_web_common/img/yujin_logo.jpg"></img>
+      &copy 2014
+    </footer>
+    <!----------!footer----------->
+</body>
+
+</html>

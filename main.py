@@ -19,8 +19,23 @@ clients_connected = 0
 proxies = []
 clients = {}
 
+class ProxyListHttpHandler(tornado.web.RequestHandler):
+    def get(self):
+        global proxies
+        concerts = []
+        for proxy in proxies:
+            pry = {}
+            pry['name'] = proxy.name
+            pry['user_auth'] = proxy.user_auth
+            concerts.append(pry)
+        answer = {}
+        answer['concerts'] = concerts
+        message = json.dumps(answer)
+        self.set_status(200)
+        self.write(message)
 
-class HttpHandler(tornado.web.RequestHandler):
+
+class VideoHttpHandler(tornado.web.RequestHandler):
     @asynchronous
     def get(self):
         global proxies, clients
@@ -79,6 +94,7 @@ class RosbridgeProxyHandler(WebSocketHandler):
 
     def on_message(self, message):
         global proxies, clients
+        print message
         try:
             msg = json.loads(message)
             if msg['op'] == 'proxy':
@@ -92,6 +108,11 @@ class RosbridgeProxyHandler(WebSocketHandler):
                 #TODO SEND AUTH MSG TO CLIENT
                 if not auth:
                     client.ws_conns[-1].close()
+            elif msg['op'] == 'call_service' and msg['service'] == 'get_concerts':
+                answer = {}
+                answer['id'] = msg['id']
+                answer['op'] = 'service_response'
+                answer['result'] = True
             elif msg.get('session_id') != None:
                 #It's a proxy to client msg
                 if msg['op'] == 'videoData':
@@ -131,7 +152,8 @@ class RosbridgeProxyHandler(WebSocketHandler):
 
     def add_proxy(self,msg,proxies):
         user_auth = msg['user_auth']
-        proxy = Proxy(self,user_auth)
+        proxy_name = msg['name']
+        proxy = Proxy(self,proxy_name,user_auth)
 
         proxies.append(proxy)
         print "It's a proxy!"
@@ -215,12 +237,10 @@ class RosbridgeProxyHandler(WebSocketHandler):
         return True
 
 class Proxy():
-    name = 1
-    def __init__(self,proxyConn,user_auth=False):
-        self.conn = proxyConn
-        self.name = Proxy.name
+    def __init__(self,proxy_conn,proxy_name,user_auth=False):
+        self.conn = proxy_conn
+        self.name = proxy_name
         self.user_auth = user_auth
-        Proxy.name += 1
 
 class Client():
     def __init__(self,session_id,proxy=None,ws_conn=None,video_conn=None):
@@ -243,7 +263,8 @@ class MyFileHandler(tornado.web.StaticFileHandler):
 
 def main():
     application = tornado.web.Application([
-        (r"/stream", HttpHandler),
+        (r"/proxy_list", ProxyListHttpHandler),    
+        (r"/stream", VideoHttpHandler),
         (r"/ws", RosbridgeProxyHandler),
         (r"/(.*)", MyFileHandler, {"path": "./www"}),
     ])
