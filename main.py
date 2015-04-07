@@ -104,7 +104,6 @@ class RosbridgeProxyHandler(WebSocketHandler):
                 client = clients[session_id]
                 client.authenticated = auth
                 print "Client ", session_id, " authenticated ", auth
-                # TODO SEND AUTH MSG TO CLIENT
                 clientMsg = {}
                 clientMsg['op'] = 'service_response'
                 clientMsg['id'] = 'login'
