@@ -65,7 +65,8 @@ class VideoHttpHandler(tornado.web.RequestHandler):
                         client.proxy.conn.write_message(message)
                     client.video_conn = self
                     return
-        # TODO Include a better error response
+        # TODO Implement error handling (not authenticated, proxy not bound, client does not exist)
+        # Include a better error response
         self.set_status(401)
         self.finish()
 
