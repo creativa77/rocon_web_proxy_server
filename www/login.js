@@ -194,7 +194,7 @@ function afterLogin(message) {
   if (message.login_result == true){
     console.log('Login!! Redirect to index');
     user = $("#user").val();
-    var url = "./index.html?username=" + user;
+    var url = "./rocon_web_remocon/index.html?username=" + user;
     window.location.replace(url);
   }else{
     alert("Wrong user or password.")
@@ -203,7 +203,7 @@ function afterLogin(message) {
 }
 
 function continueToRemocon(){
-  window.location.replace("./index.html");
+  window.location.replace("./rocon_web_remocon/index.html");
 }
 
 /**

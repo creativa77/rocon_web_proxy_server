@@ -277,7 +277,7 @@ def main():
         (r"/proxy_list", ProxyListHttpHandler),
         (r"/stream", VideoHttpHandler),
         (r"/ws", RosbridgeProxyHandler),
-        (r"/(.*)", MyFileHandler, {"path": filehandler_path}),
+        (r"/(.*)", MyFileHandler, {"path": filehandler_path, "default_filename": "login.html"}),
     ])
     http_server = tornado.httpserver.HTTPServer(application)
     http_server.listen(port)
