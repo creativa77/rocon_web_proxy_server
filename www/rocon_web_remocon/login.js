@@ -70,6 +70,7 @@ function initPublisher(){
 */
 function init() {
   $("#userlogin").hide();
+  $("#continue").hide();
   setROSCallbacks();
   initList();
 }
@@ -153,10 +154,12 @@ function listItemSelect() {
     var index = $(this).attr('id').charAt($(this).attr('id').length - 1);
     
     proxy_name = gListConcerts[index].name;
-    if (gListConcerts[index].user_auth == true) {
+    if (gListConcerts[index].enable_authentication == true) {
       $("#userlogin").show();
+      $("#continue").hide();
     } else {
       $("#userlogin").hide();
+      $("#continue").show();
     }
   });
 
