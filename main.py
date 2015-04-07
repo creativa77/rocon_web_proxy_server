@@ -58,7 +58,15 @@ class VideoHttpHandler(tornado.web.RequestHandler):
                             '--boundarydonotcross')
 
             client = clients.get(session_id)
-            if client is not None and client.proxy is not None:
+            if client is None:
+                client = Client(session_id)
+                clients[session_id] = client
+            if client.proxy == None:
+                if len(proxies) > 0:
+                    client.proxy = proxies[-1]
+                else:
+                    print "There are no connected proxies"
+            if client.proxy is not None:
                 if client.authenticated or not client.proxy.enable_authentication:
                     message = json.dumps({"op": "videoStart", "url_params": args, "session_id": session_id})
                     if client.video_conn is None:
@@ -134,12 +142,18 @@ class RosbridgeProxyHandler(WebSocketHandler):
                             print "Client", session_id, " bound to proxy ", proxy.name
                             break
                     client.proxy.conn.write_message(message)
-                elif client.authenticated or (client.proxy is not None and not client.proxy.enable_authentication):
-                    self.pass_message(msg, clients)
                 else:
-                    print "Client not authenticated"
-                    self.close()
-                    # client.ws_conns.remove(self)
+                    if client.proxy is None:
+                        if len(proxies) > 0:
+                            client.proxy = proxies[-1]
+                        else:
+                            print "There are no connected proxies"
+                    if client.authenticated or (client.proxy is not None and not client.proxy.enable_authentication):
+                        self.pass_message(msg, clients)
+                    else:
+                        print "Client not authenticated"
+                        self.close()
+                        # client.ws_conns.remove(self)
         except Exception as e:
             print "Unexpected error:", sys.exc_info()[0]
             traceback.print_exc()
