@@ -55,7 +55,7 @@ class VideoHttpHandler(tornado.web.RequestHandler):
                             'pre-check=0, post-check=0, max-age=0')
             self.set_header('access-control-allow-origin', '*')
             self.set_header('content-type', 'multipart/x-mixed-replace;boundary='
-                            'boundaryboundary--boundarydonotcross')
+                            '--boundarydonotcross')
 
             client = clients.get(session_id)
             if client is not None and client.proxy is not None:
