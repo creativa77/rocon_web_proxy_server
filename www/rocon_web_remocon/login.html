@@ -21,7 +21,7 @@
 
 
     <!-- etc -->
-    <script type="text/javascript" src="index.js"></script>
+    <script type="text/javascript" src="login.js"></script>
 </head>
 
 <body>
@@ -32,45 +32,57 @@
             <div class="navbar-inner">
                 <div class="container-fluid">
                     <img class="navbar-brand" style="height:65px; width:150px;" src="/rocon_web_common/img/rocon_logo.png"></img>
-                    <a class="navbar-brand" href="#" style="margin-top:6px">Web Remocon - Proxy Version</a>
+                    <a class="navbar-brand" href="#" style="margin-top:6px">Web Remocon</a>
                 </div>
             </div>
         </div>
  
         <br><br><br><hr>
         <div class="row">
-            <div class="col-sm-4">
+          <div class="col-sm-4">
                 <div class="well well-sm">
-                    <h3 class="text-center"><span class="label label-primary">Role</span></h3>
-                    <div class="list-group" id="roles_listgroup">
+                    <h3 class="text-center"><span class="label label-primary">Choose Concert</span></h3>
+                    <div class="list-group" id="concert_listgroup">
                     </div>
                 </div>
-            </div>
-            
-            <div class="col-sm-4">
-                <div class="well well-sm">
-                <h3 class="text-center"><span class="label label-primary">Interaction</span></h3>
-                    <div class="list-group" id="interactions_listgroup">
+          </div>
+          
+          
+          <div class="col-sm-4">
+            <div id="userlogin">
+              <div class="well well-sm">
+                <form role="form">
+                  <div class="form-group">
+                    <h5 class="text-center"><strong>User login</strong></h5>
+                    <input type="text" class="form-control" id="user" placeholder="Email">
+                    <input type="text" class="form-control" id="pass" placeholder="Password">
+                  </div>
+                  <div class="row">
+                    <br>
+                    <div class="col-xs-6 col-md-6">
+                      <button type="button" class="btn btn-default btn btn-block" data-target="#userlogin" id="loginBtn">Login</button>
                     </div>
-                </div>
+                  </div>
+                </form>
+              </div>
             </div>
-            
-            <div class="col-sm-4">
-                <div class="well well-sm">
-                    <h3 class="text-center"><span class="label label-primary">Description</span></h3>
-                    <div class="panel panel-default">
-                        <div class="panel-body" id="descriptionpanel">
-                        </div>
-                    </div>
 
-                    <button type="button" class="btn btn-info center-block" style="width:150px; height:40px; font-size:20px" id="startappBtn">Start App</button>
-                </div>
+            <div id="continue">
+              <div class="well well-sm">
+                  <h5 class="text-center"><strong>Continue to Remocon</strong></h5>
+                  <div class="row">
+                    <br>
+                    <div class="col-xs-6 col-md-6">
+                      <button type="button" class="btn btn-default btn btn-block" id="continueBtn">Continue</button>
+                    </div>
+                  </div>
+              </div>
             </div>
+ 
+          </div>
         </div>
 
-        <hr>
     </div>
-
     <!-----------footer----------->
     <footer>
       <img style="width:90px; height:25px;" src="/rocon_web_common/img/yujin_logo.jpg"></img>
