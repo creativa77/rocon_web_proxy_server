@@ -316,8 +316,11 @@ function prepareWebappUrl(interaction, baseUrl) {
   var parser = document.createElement("a");
   parser.href = ros.socket.url;
   // Override parameters to point to the same server
+  // TODO: This parameter overriding should be done right after it receives interactions list. in getInteractions
   interactionData['parameters'].rosbridge_address = parser.hostname;
-  interactionData['parameters'].rosbridge_port = parser.port || "80";
+  interactionData['parameters'].rosbridge_port = parser.port + '/ws' || "80";
+
+  // TODO: These parameters should be added only if video streamer parameters exist
   interactionData['parameters'].video_steamer_host = parser.hostname;
   interactionData['parameters'].video_steamer_port = parser.port || "80";
 
