@@ -184,6 +184,7 @@ function login() {
   });
   ros.callOnConnection({
     op: 'auth',
+    method: 'userid_password',
     user: user_name,
     pass: user_pass,
     proxy_name: proxy_name,
