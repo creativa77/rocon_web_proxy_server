@@ -10,7 +10,7 @@ $(function() {
   // Connecting to ROS
   // -----------------
   var ros = new ROSLIB.Ros({
-    url : 'ws://' + document.location.hostname + ':' + document.location.port + '/ws'
+    url : 'ws://' + document.location.host + '/ws'
   });
   // Subscribing to a Topic
   // ----------------------
