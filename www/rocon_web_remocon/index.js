@@ -327,7 +327,12 @@ function prepareWebappUrl(interaction, baseUrl) {
   // Package all the data in json format and dump it to one query string variable
   queryStringMappings = {};
   queryStringMappings['interaction_data'] = JSON.stringify(interactionData);
-    
+
+  var parser2 = document.createElement("a");
+  parser2.href = baseUrl;
+  parser2.host = parser.host;
+  baseUrl = parser2.href;
+
   // Encode the url and finish constructing
   var url = baseUrl + "?interaction_data=" + encodeURIComponent(queryStringMappings['interaction_data']);
 
