@@ -269,7 +269,7 @@ class MyFileHandler(tornado.web.StaticFileHandler):
             print "No cookie, client created"
             print server_domain
             self.set_cookie('session_id', str(uuid.uuid1()))
-            self.set_cookie('session_id2', str(uuid.uuid1()), domain=server_domain, expires_days=1)
+            self.set_cookie('session_id', str(uuid.uuid1()), domain=server_domain, expires_days=1)
         super(MyFileHandler, self).set_headers()
 
 
