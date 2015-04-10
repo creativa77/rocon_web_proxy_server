@@ -276,7 +276,7 @@ def main():
     global server_domain
     filehandler_path = str(os.environ.get("FILEPATH", "./www"))
     port = int(os.environ.get("PORT", 9090))
-    server_domain = str(os.environ.get("SERVER_DOMAIN","herokuapp.com"))
+    server_domain = str(os.environ.get("SERVER_DOMAIN","robotconcert.org"))
     application = tornado.web.Application([
         (r"/proxy_list", ProxyListHttpHandler),
         (r"/stream", VideoHttpHandler),
