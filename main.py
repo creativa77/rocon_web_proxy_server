@@ -17,6 +17,7 @@ import uuid
 clients_connected = 0
 proxies = []
 clients = {}
+server_domain = None
 
 
 class ProxyListHttpHandler(tornado.web.RequestHandler):
@@ -262,17 +263,20 @@ class Client():
 
 class MyFileHandler(tornado.web.StaticFileHandler):
     def set_headers(self):
-        global clients
+        global clients, server_domain
         cookie = self.get_cookie('session_id')
         if cookie is None:
             print "No cookie, client created"
             self.set_cookie('session_id', str(uuid.uuid1()))
+            self.set_cookie('session_id', str(uuid.uuid1()), domain=server_domain)
         super(MyFileHandler, self).set_headers()
 
 
 def main():
+    global server_domain
     filehandler_path = str(os.environ.get("FILEPATH", "./www"))
     port = int(os.environ.get("PORT", 9090))
+    server_domain = str(os.environ.get("SERVER_DOMAIN","robotconcert.org"))
     application = tornado.web.Application([
         (r"/proxy_list", ProxyListHttpHandler),
         (r"/stream", VideoHttpHandler),
