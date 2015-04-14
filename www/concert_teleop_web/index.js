@@ -115,8 +115,8 @@ function loadVideoStreamer() {
   });
   vsUI = new VideoStreamerUI({
     divID : 'video_streamer',
-    width : 640,
-    height: 480,
+    width : 320,
+    height: 240,
     host : videoSteamerHost,
     port  : videoSteamerPort,
     videoStreamerInterface : vsInterface,
